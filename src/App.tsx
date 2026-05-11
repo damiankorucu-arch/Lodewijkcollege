@@ -77,6 +77,154 @@ const educationLevels = [
     </motion.div>
   );
 
+  const SchoolGame = () => {
+    const [score, setScore] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [basketX, setBasketX] = useState(50);
+    const [items, setItems] = useState<{ id: number; x: number; y: number; type: 'diploma' | 'ink' }[]>([]);
+    const [timeLeft, setTimeLeft] = useState(30);
+    const [highScore, setHighScore] = useState(0);
+
+    const startGame = () => {
+      setIsPlaying(true);
+      setScore(0);
+      setTimeLeft(30);
+      setItems([]);
+    };
+
+    useEffect(() => {
+      if (!isPlaying || timeLeft <= 0) {
+        if (timeLeft <= 0) {
+          setIsPlaying(false);
+          if (score > highScore) setHighScore(score);
+        }
+        return;
+      }
+
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+
+      const spawnItem = setInterval(() => {
+        setItems(prev => [
+          ...prev,
+          {
+            id: Date.now(),
+            x: Math.random() * 90 + 5,
+            y: -10,
+            type: Math.random() > 0.3 ? 'diploma' : 'ink'
+          }
+        ]);
+      }, 600);
+
+      const gameLoop = setInterval(() => {
+        setItems(prev => {
+          return prev
+            .map(item => ({ ...item, y: item.y + 2 }))
+            .filter(item => {
+              // Collision detection
+              if (item.y > 85 && item.y < 95 && Math.abs(item.x - basketX) < 15) {
+                setScore(s => (item.type === 'diploma' ? s + 10 : Math.max(0, s - 15)));
+                return false;
+              }
+              return item.y < 100;
+            });
+        });
+      }, 20);
+
+      return () => {
+        clearInterval(timer);
+        clearInterval(spawnItem);
+        clearInterval(gameLoop);
+      };
+    }, [isPlaying, timeLeft, basketX, score, highScore]);
+
+    return (
+      <div className="bg-indigo-950 py-16 text-white overflow-hidden relative">
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="max-w-2xl mx-auto text-center mb-12">
+            <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.3em] mb-4">Mini Game</h3>
+            <h4 className="text-4xl font-black uppercase tracking-tighter mb-4">Grijp je Diploma!</h4>
+            <p className="text-slate-400 text-sm italic">Beweeg je tas en vang zoveel mogelijk diploma's.</p>
+          </div>
+
+          <div 
+            className="max-w-xl mx-auto h-[400px] bg-indigo-900/50 border-4 border-indigo-800 rounded-lg relative cursor-none touch-none overflow-hidden"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = ((e.clientX - rect.left) / rect.width) * 100;
+              setBasketX(Math.min(90, Math.max(10, x)));
+            }}
+            onTouchMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const touch = e.touches[0];
+              const x = ((touch.clientX - rect.left) / rect.width) * 100;
+              setBasketX(Math.min(90, Math.max(10, x)));
+            }}
+          >
+            {!isPlaying ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-indigo-950/80 z-20 p-6 text-center">
+                {timeLeft === 30 ? (
+                  <>
+                    <Trophy className="w-16 h-16 text-orange-400 mb-6" />
+                    <h5 className="text-2xl font-black mb-4 uppercase tracking-tighter">Bereid je voor op succes!</h5>
+                    <p className="mb-8 text-sm text-slate-300">Vang diploma's (+10) en ontwijk de rode inkt (-15).</p>
+                  </>
+                ) : (
+                  <>
+                    <h5 className="text-4xl font-black mb-2 uppercase tracking-tighter">Einde!</h5>
+                    <p className="text-xl mb-2">Jouw score: <span className="text-orange-400 font-black">{score}</span></p>
+                    <p className="text-xs text-slate-400 uppercase tracking-widest mb-8">Top score: {highScore}</p>
+                  </>
+                )}
+                <button 
+                  onClick={startGame}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 font-black text-xs uppercase tracking-[0.2em] transition-all"
+                >
+                  {timeLeft === 30 ? 'Start Spel' : 'Probeer Opnieuw'}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="absolute top-4 left-6 flex gap-8">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Score</span>
+                    <span className="text-2xl font-black text-orange-400">{score}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Tijd</span>
+                    <span className="text-2xl font-black">{timeLeft}s</span>
+                  </div>
+                </div>
+
+                {items.map(item => (
+                  <motion.div
+                    key={item.id}
+                    className="absolute text-3xl"
+                    style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translateX(-50%)' }}
+                  >
+                    {item.type === 'diploma' ? '🎓' : '✒️'}
+                  </motion.div>
+                ))}
+
+                <div 
+                  className="absolute bottom-4 h-16 w-20 flex items-center justify-center text-5xl transition-all duration-75"
+                  style={{ left: `${basketX}%`, transform: 'translateX(-50%)' }}
+                >
+                  🎒
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Background elements */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-800/10 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full translate-x-1/3 translate-y-1/3"></div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       {/* Navigation */}
@@ -202,6 +350,7 @@ const educationLevels = [
                 </div>
               </div>
             </section>
+            <SchoolGame />
           </PageWrapper>
         )}
 
